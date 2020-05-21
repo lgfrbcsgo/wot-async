@@ -1,3 +1,4 @@
+import sys
 from functools import wraps
 
 from mod_async.result import AsyncResult
@@ -20,32 +21,44 @@ def async_task(func):
 
 class TaskExecutor(object):
     def __init__(self, gen):
-        self._result = None
+        self._resolve = None
+        self._reject = None
+
+        @AsyncResult
+        def result(resolve, reject):
+            self._resolve = resolve
+            self._reject = reject
+
+        self._result = result
         self._gen = gen
+        self._started = False
 
     def run(self):
-        if not self._result:
-            self._result = self._await(AsyncResult.ok(None))
+        if not self._started:
+            self._started = True
+            self._await(AsyncResult.ok())
         return self._result
 
     def _await(self, async_result):
         if not isinstance(async_result, AsyncResult):
             async_result = AsyncResult.ok(async_result)
 
-        return async_result.and_then(self._send).and_error(self._throw)
+        async_result.and_then(self._send).and_error(self._throw)
 
     def _step(self, func, *args):
         try:
             async_result = func(*args)
         except Return as r:
-            return AsyncResult.ok(r.value)
+            self._resolve(r.value)
         except StopIteration:
-            return AsyncResult.ok(None)
+            self._resolve()
+        except Exception:
+            self._reject(sys.exc_info())
         else:
-            return self._await(async_result)
+            self._await(async_result)
 
     def _throw(self, exc_info):
-        return self._step(self._gen.throw, *exc_info)
+        self._step(self._gen.throw, *exc_info)
 
     def _send(self, value):
-        return self._step(self._gen.send, value)
+        self._step(self._gen.send, value)

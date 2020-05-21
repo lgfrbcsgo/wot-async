@@ -48,7 +48,7 @@ class AsyncResult(Generic[T]):
             self._reject(CallbackCancelled())
 
     def and_then(self, func):
-        # type: (Callable[[T], AsyncResult[U]]) -> AsyncResult[U]
+        # type: (Callable[[T], Union[AsyncResult[U], U]]) -> AsyncResult[U]
         @AsyncResult
         def async_result(resolve, reject):
             def on_value(value):
@@ -69,7 +69,7 @@ class AsyncResult(Generic[T]):
         return async_result
 
     def and_error(self, func):
-        # type: (Callable[[Exc], AsyncResult[T]]) -> AsyncResult[T]
+        # type: (Callable[[Exc], Union[AsyncResult[T], T]]) -> AsyncResult[T]
         @AsyncResult
         def async_result(resolve, reject):
             def on_error(value):
