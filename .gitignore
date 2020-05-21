@@ -1,0 +1,4 @@
+.idea
+**/*.pyc
+**/*.wotmod
+**/__pycache__
