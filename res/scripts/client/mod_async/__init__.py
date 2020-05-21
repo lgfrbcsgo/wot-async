@@ -2,7 +2,7 @@ from collections import deque
 from typing import Deque
 
 import BigWorld
-from mod_async.result import AsyncResult
+from mod_async.result import AsyncResult, CallbackCancelled
 from mod_async.task import Return, async_task
 
 
@@ -11,7 +11,8 @@ def delay(seconds):
     def async_result(resolve, _):
         BigWorld.callback(seconds, resolve)
 
-    return async_result
+    # ignore CallbackCancelled error
+    return async_result.and_error(lambda exc: None)
 
 
 class TimeoutExpired(Exception):

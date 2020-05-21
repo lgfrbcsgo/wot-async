@@ -10,6 +10,10 @@ U = TypeVar("U")
 Exc = Tuple[Type[BaseException], BaseException, TracebackType]
 
 
+class CallbackCancelled(Exception):
+    pass
+
+
 class AsyncResultState(IntEnum):
     PENDING = 0
     OK = 1
@@ -40,6 +44,8 @@ class AsyncResult(Generic[T]):
                 raise exc_type, exc_value, exc_traceback
             except Exception:
                 LOG_CURRENT_EXCEPTION()
+        elif self._state == AsyncResultState.PENDING:
+            self._reject(CallbackCancelled())
 
     def and_then(self, func):
         # type: (Callable[[T], AsyncResult[U]]) -> AsyncResult[U]
