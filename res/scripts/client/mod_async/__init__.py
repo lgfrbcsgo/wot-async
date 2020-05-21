@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Callable, Deque
+from typing import Deque
 
 import BigWorld
 from mod_async.result import AsyncResult
@@ -27,27 +27,42 @@ def timeout(seconds, async_result):
     return AsyncResult.select(async_result, raise_timeout())
 
 
+class Deferred(object):
+    def __init__(self):
+        self._callback = None
+
+        @AsyncResult
+        def async_result(resolve, _):
+            self._callback = resolve
+
+        self._result = async_result
+
+    def set(self, value=None):
+        self._callback(value)
+
+    @async_task
+    def wait(self):
+        yield self._result
+
+
 class AsyncSemaphore(object):
     def __init__(self, value=1):
         # type: (int) -> None
         self._value = value
-        self._callbacks = deque()  # type: Deque[Callable[[], None]]
+        self._deferred = deque()  # type: Deque[Deferred]
 
     def release(self):
-        if len(self._callbacks) == 0:
+        if len(self._deferred) == 0:
             self._value += 1
         else:
-            callback = self._callbacks.popleft()
-            callback()
+            deferred = self._deferred.popleft()
+            deferred.set()
 
     def acquire(self):
         if self._value != 0:
             self._value -= 1
             return AsyncResult.ok()
         else:
-
-            @AsyncResult
-            def async_result(resolve, _):
-                self._callbacks.append(resolve)
-
-            return async_result
+            deferred = Deferred()
+            self._deferred.append(deferred)
+            return deferred.wait()
