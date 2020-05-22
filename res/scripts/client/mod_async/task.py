@@ -21,13 +21,12 @@ def async_task(func):
 
 class AsyncTaskExecutor(object):
     def __init__(self, gen):
-        self._result = AsyncResult()
         self._gen = gen
-        self._started = False
+        self._result = None
 
     def run(self):
-        if not self._started:
-            self._started = True
+        if not self._result:
+            self._result = AsyncResult()
             self._await(AsyncResult.ok())
         return self._result
 

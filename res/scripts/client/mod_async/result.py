@@ -121,7 +121,7 @@ class AsyncResult(Generic[T]):
             func(result.resolve, result.reject)
         except Exception:
             result.reject(sys.exc_info())
-        return AsyncResult()
+        return result
 
     @staticmethod
     def from_adisp(caller):
