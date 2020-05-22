@@ -1,13 +1,14 @@
 import sys
 from enum import IntEnum
 from types import TracebackType
-from typing import Any, Callable, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (Any, Callable, Generic, List, Optional, Tuple, Type,
+                    TypeVar, Union)
 
 from debug_utils import LOG_CURRENT_EXCEPTION
 
 T = TypeVar("T")
 U = TypeVar("U")
-Exc = Tuple[Type[BaseException], BaseException, TracebackType]
+Exc = Tuple[Type[BaseException], BaseException, Optional[TracebackType]]
 
 
 class CallbackCancelled(Exception):
@@ -47,7 +48,7 @@ class AsyncResult(Generic[T]):
             except Exception:
                 LOG_CURRENT_EXCEPTION()
         elif self._state == self.State.PENDING:
-            self.reject(CallbackCancelled())
+            self.reject((CallbackCancelled, CallbackCancelled(), None))
 
     def and_then(self, func):
         # type: (Callable[[T], Union[AsyncResult[U], U]]) -> AsyncResult[U]
@@ -110,12 +111,9 @@ class AsyncResult(Generic[T]):
             self._rejected_callbacks = []
 
     def reject(self, exc_info):
-        # type: (Union[Exc, BaseException]) -> None
+        # type: (Exc) -> None
         if self._state == self.State.PENDING:
             self._state = self.State.ERROR
-            if not isinstance(exc_info, tuple):
-                exc_info = get_stacktrace(exc_info)
-
             self._exc_info = exc_info
             for callback in self._rejected_callbacks:
                 callback(exc_info)
@@ -139,7 +137,7 @@ class AsyncResult(Generic[T]):
 
     @staticmethod
     def error(exc_info):
-        # type: (Union[Exc, BaseException]) -> AsyncResult[Any]
+        # type: (Exc) -> AsyncResult[Any]
         with AsyncResult() as async_result:
             async_result.reject(exc_info)
         return async_result
@@ -187,10 +185,3 @@ class All(object):
             return AsyncResult.ok(self._resolved_values)
         else:
             return AsyncResult.select(self._pending.values()).and_then(self._select)
-
-
-def get_stacktrace(exc):
-    try:
-        raise exc
-    except Exception:
-        return sys.exc_info()
