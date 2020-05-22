@@ -14,22 +14,14 @@ def async_task(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         gen = func(*args, **kwargs)
-        return TaskExecutor(gen).run()
+        return AsyncTaskExecutor(gen).run()
 
     return wrapper
 
 
-class TaskExecutor(object):
+class AsyncTaskExecutor(object):
     def __init__(self, gen):
-        self._resolve = None
-        self._reject = None
-
-        @AsyncResult
-        def result(resolve, reject):
-            self._resolve = resolve
-            self._reject = reject
-
-        self._result = result
+        self._result = AsyncResult()
         self._gen = gen
         self._started = False
 
@@ -49,11 +41,11 @@ class TaskExecutor(object):
         try:
             async_result = func(*args)
         except Return as r:
-            self._resolve(r.value)
+            self._result.resolve(r.value)
         except StopIteration:
-            self._resolve()
+            self._result.resolve()
         except Exception:
-            self._reject(sys.exc_info())
+            self._result.reject(sys.exc_info())
         else:
             self._await(async_result)
 

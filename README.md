@@ -24,6 +24,6 @@ main()
 ```
 
 ## Working with callbacks
-`AsyncResults` allow you to work with callback based APIs. The API is similar to [JS Promises](https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Promise).
+`AsyncResult`s allow you to work with callback based APIs. The API is similar to [JS Promises](https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Promise).
 
-`AsyncResults` can be awaited using `yield` inside of functions marked with `@async_task`.
+`AsyncResult`s can be awaited using `yield` inside of functions marked with `@async_task`.
