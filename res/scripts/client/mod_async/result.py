@@ -31,6 +31,13 @@ class AsyncResult(Generic[T]):
         self._resolved_callbacks = []  # type: List[Callable[[T], Any]]
         self._rejected_callbacks = []  # type: List[Callable[[Exc], Any]]
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.reject((exc_type, exc_value, exc_traceback))
+        return True
+
     def __del__(self):
         if self._state == self.State.ERROR and not self._exc_handled:
             try:
@@ -43,20 +50,21 @@ class AsyncResult(Generic[T]):
 
     def and_then(self, func):
         # type: (Callable[[T], Union[AsyncResult[U], U]]) -> AsyncResult[U]
-        @AsyncResult.executor
-        def async_result(resolve, reject):
-            self._add_resolved_callback(self._and_callback(func, resolve, reject))
-            self._add_rejected_callback(reject)
+        with AsyncResult() as async_result:
+            self._add_resolved_callback(
+                self._and_callback(func, async_result.resolve, async_result.reject)
+            )
+            self._add_rejected_callback(async_result.reject)
 
         return async_result
 
     def and_error(self, func):
         # type: (Callable[[Exc], Union[AsyncResult[T], T]]) -> AsyncResult[T]
-        @AsyncResult.executor
-        def async_result(resolve, reject):
-            self._add_resolved_callback(resolve)
-            self._add_rejected_callback(self._and_callback(func, resolve, reject))
-
+        with AsyncResult() as async_result:
+            self._add_resolved_callback(async_result.resolve)
+            self._add_rejected_callback(
+                self._and_callback(func, async_result.resolve, async_result.reject)
+            )
         return async_result
 
     @staticmethod
@@ -114,40 +122,25 @@ class AsyncResult(Generic[T]):
             self._rejected_callbacks = []
 
     @staticmethod
-    def executor(func):
-        # type: (Callable[[Callable[[T], None], Callable[[Union[Exc, BaseException]], None]], None]) -> AsyncResult
-        result = AsyncResult()
-        try:
-            func(result.resolve, result.reject)
-        except Exception:
-            result.reject(sys.exc_info())
-        return result
-
-    @staticmethod
     def from_adisp(caller):
         # type: (Callable[[Callable[[T], None]], None]) -> AsyncResult[T]
-        @AsyncResult.executor
-        def async_result(resolve, _):
-            caller(resolve)
+        with AsyncResult() as async_result:
+            caller(async_result.resolve)
 
         return async_result
 
     @staticmethod
     def ok(value=None):
         # type: (T) -> AsyncResult[T]
-        @AsyncResult.executor
-        def async_result(resolve, _):
-            resolve(value)
-
+        with AsyncResult() as async_result:
+            async_result.resolve(value)
         return async_result
 
     @staticmethod
     def error(exc_info):
         # type: (Union[Exc, BaseException]) -> AsyncResult[Any]
-        @AsyncResult.executor
-        def async_result(_, reject):
-            reject(exc_info)
-
+        with AsyncResult() as async_result:
+            async_result.reject(exc_info)
         return async_result
 
     @staticmethod
@@ -156,12 +149,13 @@ class AsyncResult(Generic[T]):
         if len(results) == 0:
             return AsyncResult.ok(None)
 
-        @AsyncResult.executor
-        def async_result(resolve, reject):
+        with AsyncResult() as selected_result:
             for result in results:
-                result.and_then(resolve).and_error(reject)
+                result.and_then(selected_result.resolve).and_error(
+                    selected_result.reject
+                )
 
-        return async_result
+        return selected_result
 
     @staticmethod
     def all(*results):

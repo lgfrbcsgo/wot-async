@@ -1,14 +1,16 @@
 import BigWorld
-from mod_async import AsyncResult, async_task
+from mod_async import AsyncResult, CallbackCancelled, async_task
 
 
+@async_task
 def delay(seconds):
-    @AsyncResult.executor
-    def async_result(resolve, _):
-        BigWorld.callback(seconds, resolve)
+    with AsyncResult() as async_result:
+        BigWorld.callback(seconds, async_result.resolve)
 
-    # ignore CallbackCancelled error
-    return async_result.and_error(lambda exc: None)
+    try:
+        yield async_result
+    except CallbackCancelled:
+        pass
 
 
 class TimeoutExpired(Exception):
