@@ -24,6 +24,50 @@ main()
 ```
 
 ## Working with callbacks
-`AsyncResult`s allow you to work with callback based APIs. The API is similar to [JS Promises](https://developer.mozilla.org/de/docs/Web/JavaScript/Reference/Global_Objects/Promise).
+```python
+from mod_async import async_task, AsyncResult
 
-`AsyncResult`s can be awaited using `yield` inside of functions marked with `@async_task`.
+
+def multiply_callback(a, b, callback):
+    # callback based function
+    callback(a * b)
+
+
+def multiply_async(a, b):
+    # wrap function into AsyncResult
+    # all errors raised within the with block are rerouted into the result
+    with AsyncResult() as result:
+        # pass result.resolve as callback to multiply_callback
+        # result.reject can be used for errbacks
+        multiply_callback(a, b, result.resolve)
+    
+    # return the as a normal value
+    return result
+
+
+@async_task
+def main():
+    # multiply_async can be called as an async function
+    result = yield multiply_async(2, 42)
+    # prints 84
+    print result
+```
+
+## Calling `@adisp.async` functions
+```python
+import adisp
+from mod_async import async_task, AsyncResult
+
+
+@adisp.async
+def multiply_adisp(a, b, callback):
+    callback(a * b)
+
+
+@async_task
+def main():
+    # wrap returned value into AsyncResult 
+    result = yield AsyncResult.from_adisp(multiply_adisp(2, 42))
+    # prints 84
+    print result
+```
