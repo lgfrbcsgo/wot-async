@@ -1,8 +1,7 @@
 import sys
 from enum import IntEnum
 from types import TracebackType
-from typing import (Any, Callable, Generic, List, Optional, Tuple, Type,
-                    TypeVar, Union)
+from typing import Any, Callable, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 from debug_utils import LOG_CURRENT_EXCEPTION
 
