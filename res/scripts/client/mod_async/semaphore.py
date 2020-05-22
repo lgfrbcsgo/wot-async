@@ -25,3 +25,8 @@ class AsyncSemaphore(object):
             result = AsyncResult()
             self._deferred.append(result)
             return result
+
+
+class AsyncMutex(AsyncSemaphore):
+    def __init__(self):
+        super(AsyncMutex, self).__init__(1)
