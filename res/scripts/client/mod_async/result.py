@@ -124,6 +124,15 @@ class AsyncResult(Generic[T]):
         return AsyncResult()
 
     @staticmethod
+    def from_adisp(caller):
+        # type: (Callable[[Callable[[T], None]], None]) -> AsyncResult[T]
+        @AsyncResult.executor
+        def async_result(resolve, _):
+            caller(resolve)
+
+        return async_result
+
+    @staticmethod
     def ok(value=None):
         # type: (T) -> AsyncResult[T]
         @AsyncResult.executor
