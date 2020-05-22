@@ -1,7 +1,8 @@
 import sys
 from enum import IntEnum
 from types import TracebackType
-from typing import Any, Callable, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (Any, Callable, Generic, List, Optional, Tuple, Type,
+                    TypeVar, Union)
 
 from debug_utils import LOG_CURRENT_EXCEPTION
 
@@ -35,8 +36,9 @@ class AsyncResult(Generic[T]):
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.reject((exc_type, exc_value, exc_traceback))
-        return True
+        if exc_traceback:
+            self.reject((exc_type, exc_value, exc_traceback))
+            return True
 
     def __del__(self):
         if self._state == self.State.ERROR and not self._exc_handled:
