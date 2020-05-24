@@ -47,7 +47,7 @@ class TaskExecutor(object):
             try:
                 raise CallbackCancelled()
             except CallbackCancelled:
-                self._errback(sys.exc_info())
+                self._throw(sys.exc_info())
 
     def __call__(self, callback, errback):
         if not self._started:
