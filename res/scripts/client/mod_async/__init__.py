@@ -1,4 +1,17 @@
-from mod_async.result import AsyncResult
-from mod_async.semaphore import AsyncMutex, AsyncSemaphore
-from mod_async.task import Return, async_task
-from mod_async.utility import TimeoutExpired, delay, timeout
+from mod_async.async import (
+    AsyncMutex,
+    AsyncSemaphore,
+    AsyncValue,
+    CallbackCancelled,
+    Return,
+    async_task,
+    auto_run,
+    from_adisp,
+    from_future,
+    run,
+)
+
+try:
+    from mod_async.bw import TimeoutExpired, delay, timeout
+except ImportError:
+    pass
