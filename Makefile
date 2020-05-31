@@ -1,3 +1,6 @@
+VERSION = $(shell git describe --tags | sed "s/^v//")
+WOTMOD_NAME = lgfrbcsgo.async_$(VERSION).wotmod
+
 clean-build:
 	rm -rf build
 	mkdir -p build
@@ -21,4 +24,8 @@ copy-wotmod-content: compile clean-dist
 	cp -r build/* dist/unpacked/res/scripts/client
 
 wotmod: copy-wotmod-content
-	cd dist/unpacked; zip -0r ../lgfrbcsgo.async_$(shell git tag | sed "s/^v//").wotmod .
+	cd dist/unpacked; 7z a -mx=0 -tzip ../$(WOTMOD_NAME) .
+
+gh-actions-wotmod: wotmod
+	echo "::set-output name=version::$(VERSION)"
+	echo "::set-output name=wotmod_name::$(WOTMOD_NAME)"

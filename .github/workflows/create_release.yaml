@@ -1,0 +1,39 @@
+name: Create release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+\.[0-9]+\.[0-9]+'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build Wotmod
+      id: build_wotmod
+      run: make gh-actions-wotmod
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ steps.build_wotmod.outputs.version }}
+        body: |
+          ## WoT Version
+          ## Changelog
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/${{ steps.build_wotmod.outputs.wotmod_name }}
+        asset_name: ${{ steps.build_wotmod.outputs.wotmod_name }}
+        asset_content_type: application/zip
