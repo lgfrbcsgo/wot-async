@@ -23,7 +23,7 @@ copy-wotmod-content: compile clean-dist
 	cp -r build/* dist/unpacked/res/scripts/client
 
 wotmod: copy-wotmod-content
-	./scripts/template_meta_xml.py $(VERSION) > dist/unpacked/meta.xml
+	python ./scripts/template_meta_xml.py $(VERSION) > dist/unpacked/meta.xml
 	cd dist/unpacked; 7z a -mx=0 -tzip ../$(WOTMOD_NAME) .
 
 gh-actions-wotmod: wotmod
