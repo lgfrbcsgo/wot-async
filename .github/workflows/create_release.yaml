@@ -26,7 +26,9 @@ jobs:
         release_name: Release ${{ steps.build_wotmod.outputs.version }}
         body: |
           ## WoT Version
+
           ## Changelog
+          -
 
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
