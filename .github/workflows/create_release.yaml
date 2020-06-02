@@ -12,9 +12,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Build Wotmod
-      id: build_wotmod
-      run: make gh-actions-wotmod
+    - name: Build Release
+      id: build_release
+      run: make gh-actions-release
 
     - name: Create Release
       id: create_release
@@ -23,19 +23,32 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: Release ${{ steps.build_wotmod.outputs.version }}
+        release_name: Release ${{ steps.build_release.outputs.version }}
         body: |
           ## WoT Version
 
           ## Changelog
           -
+          ## Downloads
+          - `${{ steps.build_release.outputs.release_name }}`: Mod with its dependencies (recommended)
+          - `${{ steps.build_release.outputs.wotmod_name }}`: Single `.wotmod` file. Dependecies need to be downloaded separately.
 
-    - name: Upload Release Asset
+    - name: Upload Release Asset (wotmod)
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/${{ steps.build_wotmod.outputs.wotmod_name }}
-        asset_name: ${{ steps.build_wotmod.outputs.wotmod_name }}
+        asset_path: ${{ steps.build_release.outputs.wotmod_path }}
+        asset_name: ${{ steps.build_release.outputs.wotmod_name }}
+        asset_content_type: application/zip
+
+    - name: Upload Release Asset (zip)
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.build_release.outputs.release_path }}
+        asset_name: ${{ steps.build_release.outputs.release_name }}
         asset_content_type: application/zip
