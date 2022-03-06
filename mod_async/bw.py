@@ -1,5 +1,6 @@
 import BigWorld
-from mod_async.async import AsyncValue, async_task, select
+from Event import Event
+from mod_async.async import AsyncValue, Return, async_task, select
 
 
 def delay(seconds):
@@ -19,3 +20,19 @@ def timeout(seconds, async_result):
         raise TimeoutExpired()
 
     return select(async_result, raise_timeout())
+
+
+@async_task
+def await_event(event):
+    # type: (Event) -> ...
+    async_value = AsyncValue()
+
+    def handler(*args, **kwargs):
+        async_value.set((args, kwargs))
+
+    event += handler
+    try:
+        value = yield async_value
+        raise Return(value)
+    finally:
+        event -= handler
