@@ -12,6 +12,6 @@ from mod_async.async import (
 )
 
 try:
-    from mod_async.bw import TimeoutExpired, delay, timeout
+    from mod_async.bw import TimeoutExpired, delay, timeout, await_event
 except ImportError:
     pass

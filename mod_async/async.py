@@ -15,8 +15,13 @@ except ImportError:
 
 
 class Return(StopIteration):
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, *args):
+        if len(args) == 0:
+            self.value = None
+        elif len(args) == 1:
+            self.value = args[0]
+        else:
+            self.value = args
 
 
 class CallbackCancelled(Exception):
@@ -35,8 +40,8 @@ def async_task(func):
 class TaskExecutor(object):
     def __init__(self, gen):
         self._gen = gen
-        self._callback = None
-        self._errback = None
+        self._callbacks = Deferred()
+        self._errbacks = Deferred()
         self._started = False
         self._completed = False
 
@@ -50,10 +55,10 @@ class TaskExecutor(object):
                 self._throw(sys.exc_info())
 
     def __call__(self, callback, errback):
+        self._callbacks.defer(callback)
+        self._errbacks.defer(errback)
         if not self._started:
             self._started = True
-            self._callback = callback
-            self._errback = errback
             self._send(None)
 
     def _send(self, value):
@@ -67,13 +72,13 @@ class TaskExecutor(object):
             executor = gen_op(*values)
         except Return as e:
             self._completed = True
-            self._callback(e.value)
+            self._callbacks.call(e.value)
         except StopIteration:
             self._completed = True
-            self._callback(None)
+            self._callbacks.call(None)
         except Exception:
             self._completed = True
-            self._errback(sys.exc_info())
+            self._errbacks.call(sys.exc_info())
         else:
             self._register_callbacks(executor)
 
@@ -102,7 +107,9 @@ def run(executor):
 def auto_run(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        run(func(*args, **kwargs))
+        executor = func(*args, **kwargs)
+        run(executor)
+        return executor
 
     return wrapper
 
@@ -124,6 +131,30 @@ class Once(object):
             self._errback(exc_info)
 
 
+class Deferred(object):
+    def __init__(self):
+        self._called = False
+        self._args = None
+        self._kwargs = None
+        self._callbacks = []
+
+    def call(self, *args, **kwargs):
+        if not self._called:
+            self._called = True
+            self._args = args
+            self._kwargs = kwargs
+
+            callbacks, self._callbacks = self._callbacks, []
+            for callback in callbacks:
+                callback(*args, **kwargs)
+
+    def defer(self, callback):
+        if self._called:
+            callback(*self._args, **self._kwargs)
+        else:
+            self._callbacks.append(callback)
+
+
 def select(*executors):
     def select_executor(callback, errback):
         once = Once(callback, errback)
@@ -135,23 +166,13 @@ def select(*executors):
 
 class AsyncValue(object):
     def __init__(self):
-        self._value_set = False
-        self._value = None
-        self._callbacks = []
+        self._callbacks = Deferred()
 
-    def __call__(self, callback, errback):
-        if self._value_set:
-            callback(self._value)
-        else:
-            self._callbacks.append(callback)
+    def __call__(self, callback, _errback):
+        self._callbacks.defer(callback)
 
     def set(self, value=None):
-        if not self._value_set:
-            self._value_set = True
-            self._value = value
-            callbacks, self._callbacks = self._callbacks, []
-            for callback in callbacks:
-                callback(value)
+        self._callbacks.call(value)
 
     @staticmethod
     def of(value):
@@ -189,7 +210,7 @@ class AsyncMutex(AsyncSemaphore):
 
 
 def from_adisp(adisp_func):
-    def executor(callback, errback):
+    def executor(callback, _errback):
         return adisp_func(callback)
 
     return executor
