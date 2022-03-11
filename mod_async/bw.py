@@ -1,12 +1,15 @@
+import sys
+
 import BigWorld
 from Event import Event
 from mod_async.async import AsyncValue, Return, async_task, select
 
 
 def delay(seconds):
-    value = AsyncValue()
-    BigWorld.callback(seconds, value.set)
-    return value
+    def executor(callback, _errback):
+        BigWorld.callback(seconds, callback)
+
+    return executor
 
 
 class TimeoutExpired(Exception):
@@ -36,3 +39,25 @@ def await_event(event):
         raise Return(value)
     finally:
         event -= handler
+
+
+def from_adisp(adisp_func):
+    def executor(callback, _errback):
+        return adisp_func(callback)
+
+    return executor
+
+
+def from_future(future):
+    def executor(callback, errback):
+        def future_callback(result):
+            try:
+                value = result.get()
+            except Exception:
+                errback(sys.exc_info())
+            else:
+                callback(value)
+
+        future.then(future_callback)
+
+    return executor

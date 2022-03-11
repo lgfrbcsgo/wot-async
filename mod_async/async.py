@@ -2,16 +2,48 @@ import sys
 from collections import deque
 from functools import wraps
 
-try:
-    from debug_utils import LOG_CURRENT_EXCEPTION, LOG_WARNING
-except ImportError:
-    import traceback
+from mod_async.logging import LOG_CURRENT_EXCEPTION, LOG_WARNING
 
-    def LOG_CURRENT_EXCEPTION():
-        traceback.print_exc()
 
-    def LOG_WARNING(msg):
-        print msg
+class Once(object):
+    def __init__(self, callback, errback):
+        self._callback = callback
+        self._errback = errback
+        self._called = False
+
+    def callback(self, value):
+        if not self._called:
+            self._called = True
+            self._callback(value)
+
+    def errback(self, exc_info):
+        if not self._called:
+            self._called = True
+            self._errback(exc_info)
+
+
+class Deferred(object):
+    def __init__(self):
+        self._called = False
+        self._args = None
+        self._kwargs = None
+        self._callbacks = []
+
+    def call(self, *args, **kwargs):
+        if not self._called:
+            self._called = True
+            self._args = args
+            self._kwargs = kwargs
+
+            callbacks, self._callbacks = self._callbacks, []
+            for callback in callbacks:
+                callback(*args, **kwargs)
+
+    def defer(self, callback):
+        if self._called:
+            callback(*self._args, **self._kwargs)
+        else:
+            self._callbacks.append(callback)
 
 
 class Return(StopIteration):
@@ -26,15 +58,6 @@ class Return(StopIteration):
 
 class CallbackCancelled(Exception):
     pass
-
-
-def async_task(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        gen = func(*args, **kwargs)
-        return TaskExecutor(gen)
-
-    return wrapper
 
 
 class TaskExecutor(object):
@@ -90,6 +113,15 @@ class TaskExecutor(object):
             self._throw(sys.exc_info())
 
 
+def async_task(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        gen = func(*args, **kwargs)
+        return TaskExecutor(gen)
+
+    return wrapper
+
+
 def run(executor):
     def callback(_):
         pass
@@ -112,47 +144,6 @@ def auto_run(func):
         return executor
 
     return wrapper
-
-
-class Once(object):
-    def __init__(self, callback, errback):
-        self._callback = callback
-        self._errback = errback
-        self._called = False
-
-    def callback(self, value):
-        if not self._called:
-            self._called = True
-            self._callback(value)
-
-    def errback(self, exc_info):
-        if not self._called:
-            self._called = True
-            self._errback(exc_info)
-
-
-class Deferred(object):
-    def __init__(self):
-        self._called = False
-        self._args = None
-        self._kwargs = None
-        self._callbacks = []
-
-    def call(self, *args, **kwargs):
-        if not self._called:
-            self._called = True
-            self._args = args
-            self._kwargs = kwargs
-
-            callbacks, self._callbacks = self._callbacks, []
-            for callback in callbacks:
-                callback(*args, **kwargs)
-
-    def defer(self, callback):
-        if self._called:
-            callback(*self._args, **self._kwargs)
-        else:
-            self._callbacks.append(callback)
 
 
 def select(*executors):
@@ -207,25 +198,3 @@ class AsyncSemaphore(object):
 class AsyncMutex(AsyncSemaphore):
     def __init__(self):
         super(AsyncMutex, self).__init__(1)
-
-
-def from_adisp(adisp_func):
-    def executor(callback, _errback):
-        return adisp_func(callback)
-
-    return executor
-
-
-def from_future(future):
-    def executor(callback, errback):
-        def future_callback(result):
-            try:
-                value = result.get()
-            except Exception:
-                errback(sys.exc_info())
-            else:
-                callback(value)
-
-        future.then(future_callback)
-
-    return executor
