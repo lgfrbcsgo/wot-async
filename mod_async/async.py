@@ -29,6 +29,9 @@ class Deferred(object):
         self._kwargs = None
         self._callbacks = []
 
+    def __len__(self):
+        return len(self._callbacks)
+
     def call(self, *args, **kwargs):
         if not self._called:
             self._called = True
@@ -80,6 +83,9 @@ class TaskExecutor(object):
     def __call__(self, callback, errback):
         self._callbacks.defer(callback)
         self._errbacks.defer(errback)
+        self.run()
+
+    def run(self):
         if not self._started:
             self._started = True
             self._send(None)
@@ -100,6 +106,10 @@ class TaskExecutor(object):
             self._completed = True
             self._callbacks.call(None)
         except Exception:
+            if len(self._errbacks) == 0:
+                LOG_WARNING("Task raised an unhandled exception.")
+                LOG_CURRENT_EXCEPTION()
+
             self._completed = True
             self._errbacks.call(sys.exc_info())
         else:
@@ -123,25 +133,15 @@ def async_task(func):
 
 
 def run(executor):
-    def callback(_):
-        pass
-
-    def errback(exc_info):
-        exc_type, exc_value, exc_traceback = exc_info
-        try:
-            raise exc_type, exc_value, exc_traceback
-        except Exception:
-            LOG_CURRENT_EXCEPTION()
-
-    return executor(callback, errback)
+    executor.run()
+    return executor
 
 
 def auto_run(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         executor = func(*args, **kwargs)
-        run(executor)
-        return executor
+        return run(executor)
 
     return wrapper
 
