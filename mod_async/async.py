@@ -188,7 +188,6 @@ class AsyncSemaphore(object):
     def acquire(self):
         if self._value != 0:
             self._value -= 1
-            yield AsyncValue.of(None)
         else:
             result = AsyncValue()
             self._deferred.append(result)
