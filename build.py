@@ -9,7 +9,7 @@ from pynt import main, task
 
 AUTHOR = "lgfrbcsgo"
 NAME = "Async"
-DESCRIPTION = "Library for asynchronous programming inside of WoT mods."
+DESCRIPTION = "Library to make asynchronous programming easier for WoT mods."
 
 RELEASE_DEPENDENCIES = []
 

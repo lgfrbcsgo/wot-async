@@ -1,5 +1,5 @@
 # WoT Async
-Library for asynchronous programming inside of WoT mods.
+Library to make asynchronous programming easier for WoT mods.
 
 ```python
 from mod_async import async_task, delay, Return
