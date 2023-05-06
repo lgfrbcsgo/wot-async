@@ -5,8 +5,6 @@ from mod_async.async import (
     CallbackCancelled,
     Return,
     async_task,
-    auto_run,
-    run,
 )
 
 try:

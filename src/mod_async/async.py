@@ -24,7 +24,7 @@ class Once(object):
 
 class Deferred(object):
     def __init__(self):
-        self._called = False
+        self.called = False
         self._args = None
         self._kwargs = None
         self._callbacks = []
@@ -33,20 +33,18 @@ class Deferred(object):
         return len(self._callbacks)
 
     def call(self, *args, **kwargs):
-        if not self._called:
-            self._called = True
+        if not self.called:
+            self.called = True
             self._args = args
             self._kwargs = kwargs
 
-            callbacks, self._callbacks = self._callbacks, []
-            for callback in callbacks:
+            for callback in self._callbacks:
                 callback(*args, **kwargs)
 
     def defer(self, callback):
-        if self._called:
+        self._callbacks.append(callback)
+        if self.called:
             callback(*self._args, **self._kwargs)
-        else:
-            self._callbacks.append(callback)
 
 
 class Return(StopIteration):
@@ -83,7 +81,6 @@ class TaskExecutor(object):
     def __call__(self, callback, errback):
         self._callbacks.defer(callback)
         self._errbacks.defer(errback)
-        self.run()
 
     def run(self):
         if not self._started:
@@ -127,21 +124,9 @@ def async_task(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         gen = func(*args, **kwargs)
-        return TaskExecutor(gen)
-
-    return wrapper
-
-
-def run(executor):
-    executor.run()
-    return executor
-
-
-def auto_run(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        executor = func(*args, **kwargs)
-        return run(executor)
+        executor = TaskExecutor(gen)
+        executor.run()
+        return executor
 
     return wrapper
 

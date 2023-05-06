@@ -2,7 +2,7 @@
 Library for asynchronous programming inside of WoT mods.
 
 ```python
-from mod_async import async_task, delay, Return, run
+from mod_async import async_task, delay, Return
 
 
 @async_task
@@ -21,12 +21,12 @@ def main():
 
 
 # start task `main`, does not block the thread
-run(main())
+main()
 ```
 
 ## Working with callbacks
 ```python
-from mod_async import async_task, AsyncValue, run
+from mod_async import async_task, AsyncValue
 
 
 def multiply_callback(a, b, callback):
@@ -49,13 +49,13 @@ def main():
 
 
 # start task `main`, does not block the thread
-run(main())
+main()
 ```
 
 ## Calling `@adisp.async` functions
 ```python
 import adisp
-from mod_async import async_task, from_adisp, run
+from mod_async import async_task, from_adisp
 
 
 @adisp.async
@@ -72,14 +72,14 @@ def main():
 
 
 # start task `main`, does not block the thread
-run(main())
+main()
 ```
 
 ## Calling functions which return a future
 ```python
 from async import async
 from BWUtil import AsyncReturn
-from mod_async import async_task, from_future, run
+from mod_async import async_task, from_future
 
 
 @async
@@ -100,5 +100,5 @@ def main():
 
 
 # start task `main`, does not block the thread
-run(main())
+main()
 ```
