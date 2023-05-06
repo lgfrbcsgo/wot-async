@@ -116,11 +116,11 @@ class TaskExecutor(object):
             self._register_callbacks(executor)
 
     def _register_callbacks(self, executor):
+        once = Once(self._send, self._throw)
         try:
-            once = Once(self._send, self._throw)
             executor(once.callback, once.errback)
         except Exception:
-            self._throw(sys.exc_info())
+            once.errback(sys.exc_info())
 
 
 def async_task(func):
