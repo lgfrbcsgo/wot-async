@@ -2,7 +2,7 @@ import sys
 from collections import deque
 from functools import wraps
 
-from mod_async.logging import LOG_CURRENT_EXCEPTION, LOG_WARNING
+from mod_async.logging import LOG_WARNING
 
 
 class Once(object):
@@ -102,13 +102,11 @@ class TaskExecutor(object):
         except StopIteration:
             self._completed = True
             self._callbacks.call(None)
-        except Exception:
-            if len(self._errbacks) == 0:
-                LOG_WARNING("Task raised an unhandled exception.")
-                LOG_CURRENT_EXCEPTION()
-
+        except Exception as e:
             self._completed = True
             self._errbacks.call(sys.exc_info())
+            if len(self._errbacks) == 0:
+                raise e
         else:
             self._register_callbacks(executor)
 
