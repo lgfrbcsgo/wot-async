@@ -11,15 +11,15 @@ class Once(object):
         self._errback = errback
         self._called = False
 
-    def callback(self, value):
+    def callback(self, *args, **kwargs):
         if not self._called:
             self._called = True
-            self._callback(value)
+            self._callback(*args, **kwargs)
 
-    def errback(self, exc_info):
+    def errback(self, *args, **kwargs):
         if not self._called:
             self._called = True
-            self._errback(exc_info)
+            self._errback(*args, **kwargs)
 
 
 class Deferred(object):
