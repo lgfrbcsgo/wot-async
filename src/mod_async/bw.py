@@ -2,7 +2,7 @@ import sys
 
 import BigWorld
 from Event import Event
-from mod_async.async import AsyncValue, Return, async_task, select
+from mod_async.async import AsyncValue, Return, async_task, select, Deferred
 
 
 def delay(seconds):
@@ -47,15 +47,21 @@ def from_adisp(adisp_func):
 
 
 def from_future(future):
-    def executor(callback, errback):
-        def future_callback(result):
-            try:
-                value = result.get()
-            except Exception:
-                errback(sys.exc_info())
-            else:
-                callback(value)
+    callbacks = Deferred()
+    errbacks = Deferred()
 
-        future.then(future_callback)
+    def future_callback(result):
+        try:
+            value = result.get()
+        except Exception:
+            errbacks.call(sys.exc_info())
+        else:
+            callbacks.call(value)
+
+    future.then(future_callback)
+
+    def executor(callback, errback):
+        callbacks.defer(callback)
+        errbacks.defer(errback)
 
     return executor

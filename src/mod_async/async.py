@@ -2,7 +2,7 @@ import sys
 from collections import deque
 from functools import wraps
 
-from mod_async.logging import LOG_WARNING
+from mod_async.logging import LOG_WARNING, LOG_CURRENT_EXCEPTION
 
 
 class Once(object):
@@ -41,7 +41,11 @@ class Deferred(object):
 
             callbacks, self._callbacks = self._callbacks, []
             for callback in callbacks:
-                callback(*args, **kwargs)
+                try:
+                    callback(*args, **kwargs)
+                except Exception:
+                    LOG_WARNING("Unhandled exception.")
+                    LOG_CURRENT_EXCEPTION()
 
     def defer(self, callback):
         self._callback_count += 1
@@ -106,20 +110,15 @@ class TaskExecutor(object):
         except StopIteration:
             self._completed = True
             self._callbacks.call(None)
-        except Exception as e:
-            self._completed = True
-            self._errbacks.call(sys.exc_info())
-            if len(self._errbacks) == 0:
-                raise e
-        else:
-            self._register_callbacks(executor)
-
-    def _register_callbacks(self, executor):
-        once = Once(self._send, self._throw)
-        try:
-            executor(once.callback, once.errback)
         except Exception:
-            once.errback(sys.exc_info())
+            self._completed = True
+            t, v, tb = sys.exc_info()
+            self._errbacks.call((t, v, tb))
+            if len(self._errbacks) == 0:
+                raise t, v, tb
+        else:
+            once = Once(self._send, self._throw)
+            executor(once.callback, once.errback)
 
 
 def async_task(func):
@@ -134,10 +133,16 @@ def async_task(func):
 
 
 def select(*executors):
+    callbacks = Deferred()
+    errbacks = Deferred()
+    once = Once(callbacks.call, errbacks.call)
+
+    for executor in executors:
+        executor(once.callback, once.errback)
+
     def select_executor(callback, errback):
-        once = Once(callback, errback)
-        for executor in executors:
-            executor(once.callback, once.errback)
+        callbacks.defer(callback)
+        errbacks.defer(errback)
 
     return select_executor
 
