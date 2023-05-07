@@ -112,10 +112,9 @@ class TaskExecutor(object):
             self._callbacks.call(None)
         except Exception:
             self._completed = True
-            t, v, tb = sys.exc_info()
-            self._errbacks.call((t, v, tb))
+            self._errbacks.call(sys.exc_info())
             if len(self._errbacks) == 0:
-                raise t, v, tb
+                raise
         else:
             once = Once(self._send, self._throw)
             executor(once.callback, once.errback)
