@@ -24,27 +24,31 @@ class Once(object):
 
 class Deferred(object):
     def __init__(self):
-        self.called = False
+        self._called = False
         self._args = None
         self._kwargs = None
+        self._callback_count = 0
         self._callbacks = []
 
     def __len__(self):
-        return len(self._callbacks)
+        return self._callback_count
 
     def call(self, *args, **kwargs):
-        if not self.called:
-            self.called = True
+        if not self._called:
+            self._called = True
             self._args = args
             self._kwargs = kwargs
 
-            for callback in self._callbacks:
+            callbacks, self._callbacks = self._callbacks, []
+            for callback in callbacks:
                 callback(*args, **kwargs)
 
     def defer(self, callback):
-        self._callbacks.append(callback)
-        if self.called:
+        self._callback_count += 1
+        if self._called:
             callback(*self._args, **self._kwargs)
+        else:
+            self._callbacks.append(callback)
 
 
 class Return(StopIteration):
